@@ -81,12 +81,12 @@ Open `http://localhost:8000` in your browser.
 
 ---
 
-## 🎓 6. Evaluator Viva Q&A Guide
-**Q1: How does your project differ from existing government portals like pmkisan.gov.in?**  
+## 🎓 6. Things To Remember:-
+**Q1: How does my project differ from existing government portals like pmkisan.gov.in?**  
 *Answer:* Official portals provide static notifications and collect form inputs, but do not provide cross-departmental comparison, step-by-step guidance, personalized multi-scheme eligibility matching, or printable checklists. KrishiSetu acts as the preparatory bridge.
 
-**Q2: Does your platform actually disburse money or submit government forms?**  
+**Q2: Does my platform actually disburse money or submit government forms?**  
 *Answer (Honest Academic Scope):* No, by design KrishiSetu hands off to the authentic government portal (e.g. `pmkisan.gov.in`) for final form submission. This avoids security and liability risks while keeping the demo 100% compliant and realistic.
 
-**Q3: How do you prevent the AI assistant from hallucinating false subsidy amounts?**  
+**Q3: How do I prevent the AI assistant from hallucinating false subsidy amounts?**  
 *Answer:* We implemented strict Retrieval-Augmented Generation (RAG). Every prompt retrieves verified rows from our database. If an inquiry has no match, the assistant refuses to guess and informs the farmer.
