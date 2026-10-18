@@ -36,12 +36,14 @@ const AppState = {
 const TRANSLATIONS = {
   en: {
     appTitle: "KrishiSetu",
-    taglineSubtitle: "Centralized Government & NGO Agri Schemes Bridge",
+    topBarTitle: "National Agricultural Welfare Information & Application Guidance Platform",
+    topBarVerified: "🛡️ Verified Data · Updated September 2026",
+    sideNavHeader: "Platform Navigation",
     navHome: "Home",
     navCatalog: "Explore Schemes",
     navEligibility: "Eligibility Checker",
     navDashboard: "My Dashboard",
-    navCompare: "Compare",
+    navCompare: "Compare Schemes",
     navLocator: "KVK / CSC Locator",
     heroTitle: "Find & Apply For Every Agricultural Scheme In One Place.",
     heroSubtitle: "Stop searching across dozens of broken portals. Discover verified central, state, and NGO welfare subsidies with step-by-step application guidance.",
@@ -70,16 +72,20 @@ const TRANSLATIONS = {
     savedAlert: "Scheme saved to your Dashboard!",
     removedAlert: "Scheme removed from bookmarks.",
     compareMaxAlert: "You can compare up to 3 schemes at a time.",
-    compareBtn: "Compare Schemes Now"
+    compareBtn: "Compare Schemes Now",
+    exploreAllBtn: "Explore All 36+ Verified Schemes →",
+    checkEligibilityBtn: "Check Eligibility"
   },
   hi: {
     appTitle: "कृषि सेतु",
-    taglineSubtitle: "सरकारी एवं गैर-सरकारी कृषि योजनाओं का एकीकृत मंच",
+    topBarTitle: "राष्ट्रीय कृषि कल्याण सूचना एवं आवेदन मार्गदर्शन मंच",
+    topBarVerified: "🛡️ सत्यापित डेटा · अपडेटेड सितंबर 2026",
+    sideNavHeader: "मंच नेविगेशन",
     navHome: "होम",
     navCatalog: "योजनाएं खोजें",
     navEligibility: "पात्रता जांचें",
     navDashboard: "मेरा डैशबोर्ड",
-    navCompare: "तुलना करें",
+    navCompare: "योजना तुलना",
     navLocator: "केवीके / सीएससी केंद्र",
     heroTitle: "सभी सरकारी व एनजीओ कृषि योजनाएं अब एक ही स्थान पर।",
     heroSubtitle: "अलग-अलग वेबसाइटों पर भटकना बंद करें। चरण-दर-चरण आवेदन मार्गदर्शन के साथ सत्यापित सरकारी व सीएसआर अनुदान खोजें।",
@@ -108,7 +114,9 @@ const TRANSLATIONS = {
     savedAlert: "योजना आपके डैशबोर्ड में सहेज ली गई!",
     removedAlert: "योजना बुकमार्क से हटा दी गई।",
     compareMaxAlert: "आप एक समय में अधिकतम 3 योजनाओं की तुलना कर सकते हैं।",
-    compareBtn: "योजनाओं की तुलना करें"
+    compareBtn: "योजनाओं की तुलना करें",
+    exploreAllBtn: "सभी 36+ सत्यापित योजनाएं देखें →",
+    checkEligibilityBtn: "पात्रता जांचें"
   }
 };
 
@@ -116,17 +124,140 @@ const TRANSLATIONS = {
 let currentSpeechUtterance = null;
 
 // DOM Initialization
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+  handleLegacyDeepLinks();
+  highlightActiveSideNav();
+  initHamburgerMenu();
+  initAuthNav();
+  await syncUserDataIfLoggedIn();
   initLanguage();
   renderCategoryChips();
   renderSchemesCatalog();
   renderHeroStats();
   renderCSCLocations();
   initCompareStickyBar();
+  initComparePage();
   initEventListeners();
   updateSavedBadgeCount();
   renderDashboardKanban();
 });
+
+// Hamburger Drawer Navigation Controller
+function initHamburgerMenu() {
+  const hamburgerBtn = document.getElementById('hamburgerBtn');
+  const sideNav = document.getElementById('sideNavPanel');
+  const overlay = document.getElementById('navOverlay');
+  if (!hamburgerBtn || !sideNav) return;
+
+  function openMenu() {
+    sideNav.classList.add('open');
+    if (overlay) overlay.classList.add('active');
+    hamburgerBtn.setAttribute('aria-expanded', 'true');
+    document.body.style.overflow = 'hidden';
+    const firstLink = sideNav.querySelector('.side-nav-item a');
+    if (firstLink) firstLink.focus();
+  }
+
+  function closeMenu() {
+    sideNav.classList.remove('open');
+    if (overlay) overlay.classList.remove('active');
+    hamburgerBtn.setAttribute('aria-expanded', 'false');
+    document.body.style.overflow = '';
+  }
+
+  function toggleMenu() {
+    const isOpen = sideNav.classList.contains('open');
+    if (isOpen) closeMenu();
+    else openMenu();
+  }
+
+  hamburgerBtn.addEventListener('click', toggleMenu);
+
+  if (overlay) {
+    overlay.addEventListener('click', closeMenu);
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && sideNav.classList.contains('open')) {
+      closeMenu();
+      hamburgerBtn.focus();
+    }
+  });
+
+  sideNav.querySelectorAll('.side-nav-item a').forEach(link => {
+    link.addEventListener('click', () => {
+      closeMenu();
+    });
+  });
+}
+
+// Auth State & Nav Controller
+function initAuthNav() {
+  const loginBtn = document.getElementById('navLoginBtn');
+  const profileChip = document.getElementById('navProfileChip');
+  const profileDropdown = document.getElementById('profileDropdown');
+  const logoutBtn = document.getElementById('logoutBtn');
+  
+  if (typeof KrishiApi !== 'undefined' && KrishiApi.isLoggedIn()) {
+    const user = KrishiApi.getCurrentUser();
+    if (loginBtn) loginBtn.style.display = 'none';
+    if (profileChip) {
+      profileChip.style.display = 'flex';
+      const avatar = document.getElementById('profileAvatar');
+      const name = document.getElementById('profileName');
+      const displayName = user.name || user.fullName || 'Farmer';
+      if (avatar) avatar.textContent = displayName.charAt(0).toUpperCase();
+      if (name) name.textContent = displayName;
+    }
+  } else {
+    if (loginBtn) loginBtn.style.display = 'inline-flex';
+    if (profileChip) profileChip.style.display = 'none';
+  }
+  
+  const chipBtn = document.getElementById('profileChipBtn');
+  if (chipBtn && profileDropdown) {
+    chipBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      profileDropdown.classList.toggle('active');
+    });
+    document.addEventListener('click', () => {
+      profileDropdown.classList.remove('active');
+    });
+  }
+  
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      if (typeof KrishiApi !== 'undefined') {
+        await KrishiApi.logout();
+      }
+      window.location.href = 'index.html';
+    });
+  }
+}
+
+// Synchronize Saved Schemes & Progress when logged in
+async function syncUserDataIfLoggedIn() {
+  if (typeof KrishiApi === 'undefined' || !KrishiApi.isLoggedIn()) return;
+  try {
+    const savedIds = await KrishiApi.getSavedSchemes();
+    if (Array.isArray(savedIds) && savedIds.length > 0) {
+      AppState.savedSchemeIds = savedIds;
+      localStorage.setItem('krishi_saved_schemes', JSON.stringify(savedIds));
+    }
+    const progressList = await KrishiApi.getProgress();
+    if (Array.isArray(progressList)) {
+      progressList.forEach(item => {
+        if (item.schemeId && item.status) {
+          AppState.applicationTracker[item.schemeId] = item.status;
+        }
+      });
+      localStorage.setItem('krishi_tracker', JSON.stringify(AppState.applicationTracker));
+    }
+  } catch (err) {
+    console.warn('Could not sync user data with backend:', err);
+  }
+}
 
 // Initialize Language
 function initLanguage() {
@@ -288,6 +419,14 @@ function renderSchemesCatalog() {
           <button class="card-view-btn" onclick="openSchemeDetail('${scheme.id}')">
             <span>${isHi ? "विवरण व प्रक्रिया" : "View Steps & Guide"}</span> →
           </button>
+          ${scheme.applyUrl 
+            ? `<a href="${scheme.applyUrl}" target="_blank" rel="noopener noreferrer" class="card-apply-btn" onclick="event.stopPropagation()" title="${isHi ? 'सीधे आवेदन करें' : 'Apply / Register Directly'}">
+                <span>${isHi ? 'आवेदन करें ↗' : 'Apply ↗'}</span>
+              </a>`
+            : `<span class="card-apply-offline" title="${isHi ? 'सीएससी केंद्र पर ऑफलाइन आवेदन करें' : 'Apply offline via nearest CSC center'}">
+                ${isHi ? 'ऑफलाइन (CSC)' : 'Offline (CSC)'}
+              </span>`
+          }
           <label class="card-compare-chk" title="Compare side by side">
             <input type="checkbox" ${isCompared ? 'checked' : ''} 
                    onchange="toggleCompareScheme('${scheme.id}', this.checked)">
@@ -310,9 +449,22 @@ function resetFilters() {
   renderSchemesCatalog();
 }
 
-// Bookmark / Save Scheme Toggle
-function toggleSaveScheme(schemeId, event) {
+// Bookmark / Save Scheme Toggle (with Auth gating - Section 3.3)
+async function toggleSaveScheme(schemeId, event) {
   if (event) event.stopPropagation();
+
+  // Save gating: if logged out, prompt to sign in and redirect
+  if (typeof KrishiApi !== 'undefined' && !KrishiApi.isLoggedIn()) {
+    const isHi = AppState.currentLang === 'hi';
+    const proceed = confirm(isHi 
+      ? "योजनाओं को सहेजने और अपने डैशबोर्ड पर आवेदन ट्रैक करने के लिए कृपया लॉगिन करें। क्या आप लॉगिन पृष्ठ पर जाना चाहते हैं?" 
+      : "Please sign in to save schemes and manage application milestones in your Dashboard. Would you like to log in now?");
+    if (proceed) {
+      const currentPage = encodeURIComponent(window.location.pathname.split("/").pop() || "index.html");
+      window.location.href = `login.html?next=${currentPage}&action=save&scheme=${schemeId}`;
+      return;
+    }
+  }
 
   const idx = AppState.savedSchemeIds.indexOf(schemeId);
   const isHi = AppState.currentLang === 'hi';
@@ -322,9 +474,15 @@ function toggleSaveScheme(schemeId, event) {
     if (!AppState.applicationTracker[schemeId]) {
       AppState.applicationTracker[schemeId] = "not_started";
     }
+    if (typeof KrishiApi !== 'undefined') {
+      await KrishiApi.saveScheme(schemeId).catch(() => null);
+    }
     showToast(isHi ? "योजना आपके डैशबोर्ड में सहेज ली गई!" : "Scheme saved to your Dashboard!");
   } else {
     AppState.savedSchemeIds.splice(idx, 1);
+    if (typeof KrishiApi !== 'undefined') {
+      await KrishiApi.removeSavedScheme(schemeId).catch(() => null);
+    }
     showToast(isHi ? "योजना बुकमार्क से हटा दी गई।" : "Scheme removed from bookmarks.");
   }
 
@@ -517,6 +675,41 @@ function openSchemeDetail(schemeId) {
   const officialLink = document.getElementById("modalOfficialLink");
   officialLink.href = scheme.officialUrl;
 
+  // Apply / Register Directly button
+  const applyContainer = document.getElementById('modalApplyBtnContainer');
+  if (applyContainer) {
+    if (scheme.applyUrl) {
+      applyContainer.innerHTML = `
+        <a href="${scheme.applyUrl}" target="_blank" rel="noopener noreferrer" class="btn-primary btn-accent" style="font-size: 0.9rem; padding: 10px 18px;">
+          ${isHi ? '📝 सीधे आवेदन / पंजीकरण करें ↗' : '📝 Apply / Register Directly ↗'}
+        </a>`;
+    } else {
+      applyContainer.innerHTML = `
+        <div style="background: var(--color-warning-bg); padding: 10px 14px; border-radius: var(--radius-sm); font-size: 0.8125rem; color: var(--color-warning);">
+          ${isHi ? '⚠️ इस योजना के लिए निकटतम सीएससी / केवीके केंद्र पर जाकर ऑफलाइन आवेदन करें।' : '⚠️ This scheme requires offline application via your nearest CSC / KVK center.'}
+          <a href="locator.html" style="color: var(--color-primary); font-weight: 600; margin-left: 6px;">${isHi ? 'केंद्र खोजें →' : 'Find Center →'}</a>
+        </div>`;
+    }
+  }
+
+  // Official Documents / Proof Guidelines
+  const docsSection = document.getElementById('modalOfficialDocsSection');
+  const officialDocsList = document.getElementById('modalOfficialDocsList');
+  if (docsSection && officialDocsList && scheme.officialDocuments && scheme.officialDocuments.length > 0) {
+    docsSection.style.display = 'block';
+    officialDocsList.innerHTML = scheme.officialDocuments.map(doc => `
+      <a href="${doc.url}" target="_blank" rel="noopener noreferrer" class="official-doc-card">
+        <div class="doc-icon">📄</div>
+        <div class="doc-info">
+          <div class="doc-title">${doc.title}</div>
+          <div class="doc-meta">${doc.source} · ${doc.year}</div>
+        </div>
+        <span class="doc-open-icon">↗</span>
+      </a>
+    `).join('');
+  } else if (docsSection) {
+    docsSection.style.display = 'none';
+  }
   // Bookmark Button in Modal
   const modalSaveBtn = document.getElementById("modalSaveBtn");
   if (modalSaveBtn) {
@@ -865,42 +1058,259 @@ function renderDashboardKanban() {
 function updateSchemeKanbanStatus(schemeId, newStatus) {
   AppState.applicationTracker[schemeId] = newStatus;
   localStorage.setItem('krishi_tracker', JSON.stringify(AppState.applicationTracker));
+  if (typeof KrishiApi !== 'undefined' && KrishiApi.isLoggedIn()) {
+    KrishiApi.updateProgress(schemeId, newStatus).catch(() => null);
+  }
   renderDashboardKanban();
   showToast(`Status updated to: ${newStatus.replace('_', ' ')}`);
 }
 
-// CSC / KVK Locator
-function renderCSCLocations() {
+// CSC / KVK Locator (Requirement 3.4)
+function renderCSCLocations(filterType = "all", searchQuery = "") {
   const container = document.getElementById("locatorCardsGrid");
   if (!container) return;
 
   const isHi = AppState.currentLang === 'hi';
-  container.innerHTML = CSC_KVK_LOCATIONS.map(loc => `
-    <div class="locator-card">
-      <div class="locator-type-tag ${loc.type === 'KVK' ? 'kvk' : 'csc'}">
-        ${loc.type === 'KVK' ? 'Krishi Vigyan Kendra (ICAR)' : 'Digital Seva Centre (CSC)'}
+  const query = (searchQuery || "").toLowerCase().trim();
+
+  let filtered = CSC_KVK_LOCATIONS.filter(loc => {
+    const matchType = filterType === "all" || loc.type === filterType;
+    let matchQuery = true;
+    if (query) {
+      matchQuery = loc.name.toLowerCase().includes(query) ||
+                   (loc.nameHi && loc.nameHi.toLowerCase().includes(query)) ||
+                   loc.district.toLowerCase().includes(query) ||
+                   loc.state.toLowerCase().includes(query) ||
+                   loc.address.toLowerCase().includes(query) ||
+                   loc.services.some(s => s.toLowerCase().includes(query));
+    }
+    return matchType && matchQuery;
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <div style="grid-column: 1 / -1; text-align: center; padding: 48px; background: #FAF8F2; border-radius: 12px; border: 1px dashed var(--color-surface-border);">
+        <p style="font-size: 1.1rem; font-weight: 600; color: var(--color-primary); margin-bottom: 8px;">
+          ${isHi ? "कोई केंद्र नहीं मिला।" : "No centers found matching your search."}
+        </p>
+        <p style="color: var(--color-ink-muted); font-size: 0.875rem;">
+          ${isHi ? "कृपया अन्य जिला या राज्य लिखकर खोजें।" : "Try typing another district or state name."}
+        </p>
       </div>
-      <h4 style="color: var(--color-primary); font-size: 1.05rem;">
-        ${isHi ? loc.nameHi : loc.name}
-      </h4>
-      <p style="font-size: 0.8125rem; color: var(--color-ink-muted);">
-        📍 ${loc.address}, ${loc.state}
-      </p>
-      <div style="font-size: 0.8125rem; font-family: var(--font-mono); color: var(--color-secondary);">
-        📞 ${loc.contact}
+    `;
+    return;
+  }
+
+  container.innerHTML = filtered.map(loc => {
+    const centerTitle = isHi ? loc.nameHi : loc.name;
+    const googleSearchQuery = encodeURIComponent(`${loc.name} ${loc.district} ${loc.state}`);
+    const googleSearchUrl = `https://www.google.com/search?q=${googleSearchQuery}`;
+    const mapsQuery = encodeURIComponent(`${loc.name}, ${loc.address}`);
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
+
+    return `
+      <div class="locator-card clickable-locator-card" 
+           onclick="window.open('${googleSearchUrl}', '_blank', 'noopener,noreferrer')" 
+           tabindex="0" 
+           role="button"
+           aria-label="${isHi ? 'Google पर खोजें: ' : 'Search on Google: '}${loc.name}"
+           title="${isHi ? 'Google पर खोजें (नया टैब)' : 'Search on Google (opens in new tab)'}"
+           onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.open('${googleSearchUrl}', '_blank', 'noopener,noreferrer')}">
+        <div class="locator-card-header">
+          <div class="locator-type-tag ${loc.type === 'KVK' ? 'kvk' : 'csc'}">
+            ${loc.type === 'KVK' ? (isHi ? 'कृषि विज्ञान केंद्र (ICAR)' : 'Krishi Vigyan Kendra (ICAR)') : (isHi ? 'डिजिटल सेवा केंद्र (CSC)' : 'Digital Seva Centre (CSC)')}
+          </div>
+          <span class="locator-search-pill" title="${isHi ? 'Google पर खोजें' : 'Search on Google'}">
+            🔍 Google ↗
+          </span>
+        </div>
+        <h4 class="locator-name">
+          ${centerTitle}
+        </h4>
+        <div class="locator-address-wrapper">
+          <a href="${mapsUrl}" 
+             target="_blank" 
+             rel="noopener noreferrer" 
+             class="locator-address-link"
+             title="${isHi ? 'गूगल मैप्स में स्थान देखें' : 'Open in Google Maps'}"
+             aria-label="${isHi ? 'गूगल मैप्स में स्थान देखें: ' : 'Open in Google Maps: '}${loc.address}"
+             onclick="event.stopPropagation()">
+            <span class="pin-icon">📍</span>
+            <span class="address-text">${loc.address}, ${loc.state}</span>
+            <span class="maps-hint">🗺️ Maps ↗</span>
+          </a>
+        </div>
+        <div class="locator-phone">
+          📞 <a href="tel:${loc.contact.replace(/\s+/g, '')}" onclick="event.stopPropagation()" title="${isHi ? 'कॉल करें' : 'Call center'}">${loc.contact}</a>
+        </div>
+        <div class="locator-services-list">
+          ${loc.services.map(s => `<span class="service-pill">${s}</span>`).join('')}
+        </div>
       </div>
-      <div class="locator-services-list">
-        ${loc.services.map(s => `<span class="service-pill">${s}</span>`).join('')}
+    `;
+  }).join('');
+}
+
+// Side Nav Active Item Highlighter
+function highlightActiveSideNav() {
+  const currentPath = window.location.pathname.split("/").pop() || "index.html";
+  document.querySelectorAll(".side-nav-item").forEach(item => {
+    const link = item.querySelector("a");
+    if (!link) return;
+    const href = link.getAttribute("href");
+    if (href === currentPath || (currentPath === "" && href === "index.html")) {
+      item.classList.add("active");
+    } else {
+      item.classList.remove("active");
+    }
+  });
+}
+
+// Deep Links Handler for Legacy Anchors (Requirement 3.3)
+function handleLegacyDeepLinks() {
+  const hash = window.location.hash;
+  const path = window.location.pathname.toLowerCase();
+  const isIndex = path.endsWith("index.html") || path.endsWith("/") || !path.includes(".html");
+
+  if (isIndex && hash) {
+    if (hash === "#catalogSection" || hash === "#schemesSection") {
+      window.location.replace("schemes.html");
+    } else if (hash === "#eligibilitySection") {
+      window.location.replace("eligibility.html");
+    } else if (hash === "#dashboardSection") {
+      window.location.replace("dashboard.html");
+    } else if (hash === "#locatorSection") {
+      window.location.replace("locator.html");
+    } else if (hash === "#compareSection") {
+      window.location.replace("compare.html");
+    }
+  }
+}
+
+// Dedicated Compare Page Matrix
+function initComparePage() {
+  const container = document.getElementById("comparePageMatrix");
+  if (!container) return;
+
+  if (AppState.compareSchemeIds.length < 2) {
+    AppState.compareSchemeIds = ["pm-kisan", "pmfby", "kcc"];
+  }
+
+  renderCompareMatrixPage();
+}
+
+function renderCompareMatrixPage() {
+  const container = document.getElementById("comparePageMatrix");
+  if (!container) return;
+
+  const isHi = AppState.currentLang === 'hi';
+  const selectedSchemes = AppState.compareSchemeIds.map(id => SCHEMES_DATA.find(x => x.id === id)).filter(Boolean);
+
+  container.innerHTML = `
+    <div style="margin-bottom: 24px; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; background: var(--color-surface); padding: 18px 22px; border-radius: var(--radius-md); border: 1px solid var(--color-surface-border);">
+      <div>
+        <h3 style="font-family: var(--font-serif); color: var(--color-primary); margin-bottom: 4px;">
+          ${isHi ? "तुलना के लिए योजनाएं चुनें (अधिकतम 3)" : "Select Schemes to Compare (Max 3)"}
+        </h3>
+        <p style="font-size: 0.8125rem; color: var(--color-ink-muted);">
+          ${isHi ? "विभिन्न मापदंडों पर सीधे तुलना करने के लिए ड्रॉपडाउन से चुनें।" : "Select any scheme to inspect subsidies, land limits, and procedures side-by-side."}
+        </p>
+      </div>
+      <div style="display: flex; flex-wrap: gap; gap: 10px;">
+        ${[0, 1, 2].map(idx => `
+          <select onchange="updateCompareSlot(${idx}, this.value)" style="padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--color-surface-border); background: var(--color-bg); font-size: 0.8125rem; font-family: inherit; font-weight: 500; color: var(--color-ink);">
+            <option value="">${isHi ? "-- योजना " + (idx + 1) + " चुनें --" : "-- Select Scheme " + (idx + 1) + " --"}</option>
+            ${SCHEMES_DATA.map(s => `
+              <option value="${s.id}" ${selectedSchemes[idx] && selectedSchemes[idx].id === s.id ? 'selected' : ''}>
+                ${s.code} - ${isHi ? s.nameHi : s.name}
+              </option>
+            `).join('')}
+          </select>
+        `).join('')}
       </div>
     </div>
-  `).join('');
+
+    <div style="background: var(--color-surface); border-radius: var(--radius-lg); border: 1px solid var(--color-surface-border); overflow-x: auto; box-shadow: var(--shadow-sm);">
+      <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.875rem;">
+        <thead>
+          <tr style="background: #F4F1EA; border-bottom: 2px solid var(--color-surface-border);">
+            <th style="padding: 16px; width: 20%; color: var(--color-primary); font-size: 0.9375rem;">Parameter</th>
+            ${selectedSchemes.map(s => `
+              <th style="padding: 16px; font-family: var(--font-serif); font-size: 1.15rem; color: var(--color-primary);">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                  <span>${isHi ? s.nameHi : s.name}</span>
+                  <span class="scheme-code-badge">${s.code}</span>
+                </div>
+              </th>
+            `).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom: 1px solid var(--color-surface-border);">
+            <td style="padding: 14px 16px; font-weight: 600; color: var(--color-ink);">${isHi ? "जारीकर्ता संस्था" : "Issuing Authority"}</td>
+            ${selectedSchemes.map(s => `<td style="padding: 14px 16px; color: var(--color-secondary); font-weight: 500;">🏛️ ${isHi ? s.issuingBodyHi : s.issuingBody}</td>`).join('')}
+          </tr>
+          <tr style="border-bottom: 1px solid var(--color-surface-border); background: #FAF8F2;">
+            <td style="padding: 14px 16px; font-weight: 600; color: var(--color-ink);">${isHi ? "सब्सिडी / मुख्य लाभ" : "Subsidy / Benefit"}</td>
+            ${selectedSchemes.map(s => `<td style="padding: 14px 16px; font-family: var(--font-mono); font-weight: 700; color: var(--color-primary); font-size: 0.95rem;">${s.subsidyHighlight}</td>`).join('')}
+          </tr>
+          <tr style="border-bottom: 1px solid var(--color-surface-border);">
+            <td style="padding: 14px 16px; font-weight: 600; color: var(--color-ink);">${isHi ? "पात्र भूमि आकार" : "Eligible Landholding"}</td>
+            ${selectedSchemes.map(s => `<td style="padding: 14px 16px;">${s.minLand} - ${s.maxLand >= 999 ? (isHi ? 'कोई ऊपरी सीमा नहीं' : 'No upper limit') : s.maxLand + ' Hectares'}</td>`).join('')}
+          </tr>
+          <tr style="border-bottom: 1px solid var(--color-surface-border); background: #FAF8F2;">
+            <td style="padding: 14px 16px; font-weight: 600; color: var(--color-ink);">${isHi ? "लक्षित लाभार्थी" : "Target Beneficiaries"}</td>
+            ${selectedSchemes.map(s => `<td style="padding: 14px 16px; color: var(--color-ink-muted);">${s.targetBeneficiary}</td>`).join('')}
+          </tr>
+          <tr style="border-bottom: 1px solid var(--color-surface-border);">
+            <td style="padding: 14px 16px; font-weight: 600; color: var(--color-ink);">${isHi ? "आवश्यक दस्तावेज़" : "Required Documents"}</td>
+            ${selectedSchemes.map(s => `<td style="padding: 14px 16px;"><ul style="padding-left: 18px; margin: 0; color: var(--color-ink-muted);">${s.documents.map(d => `<li style="margin-bottom: 4px;">${d}</li>`).join('')}</ul></td>`).join('')}
+          </tr>
+          <tr style="border-bottom: 1px solid var(--color-surface-border); background: #FAF8F2;">
+            <td style="padding: 14px 16px; font-weight: 600; color: var(--color-ink);">${isHi ? "आवेदन के मुख्य चरण" : "Procedure Steps"}</td>
+            ${selectedSchemes.map(s => `<td style="padding: 14px 16px;"><ol style="padding-left: 18px; margin: 0; color: var(--color-ink-muted);">${s.procedure.slice(0, 3).map(p => `<li style="margin-bottom: 4px;"><strong>${p.title}:</strong> ${p.desc}</li>`).join('')}</ol></td>`).join('')}
+          </tr>
+          <tr>
+            <td style="padding: 14px 16px; font-weight: 600; color: var(--color-ink);">${isHi ? "कार्रवाई" : "Actions"}</td>
+            ${selectedSchemes.map(s => `
+              <td style="padding: 14px 16px;">
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                  <button class="card-view-btn" onclick="openSchemeDetail('${s.id}')" style="font-size: 0.8125rem;">
+                    ${isHi ? "विवरण देखें" : "View Details"}
+                  </button>
+                  <a href="${s.officialUrl}" target="_blank" rel="noopener noreferrer" class="btn-primary" style="font-size: 0.8125rem; padding: 7px 12px;">
+                    ${isHi ? "पोर्टल ↗" : "Official Portal ↗"}
+                  </a>
+                </div>
+              </td>
+            `).join('')}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function updateCompareSlot(slotIdx, schemeId) {
+  if (!schemeId) {
+    if (AppState.compareSchemeIds.length > slotIdx) {
+      AppState.compareSchemeIds.splice(slotIdx, 1);
+    }
+  } else {
+    AppState.compareSchemeIds[slotIdx] = schemeId;
+  }
+  renderCompareMatrixPage();
+  updateCompareStickyBar();
 }
 
 // Hero Live Stats Counter
 function renderHeroStats() {
-  document.getElementById("heroStatSchemes").textContent = SCHEMES_DATA.length + "+";
-  document.getElementById("heroStatSubsidies").textContent = "Up to 80%";
-  document.getElementById("heroStatStates").textContent = "All 28 States";
+  const elSchemes = document.getElementById("heroStatSchemes");
+  if (elSchemes) elSchemes.textContent = SCHEMES_DATA.length + "+";
+  const elSubsidies = document.getElementById("heroStatSubsidies");
+  if (elSubsidies) elSubsidies.textContent = "Up to 80%";
+  const elStates = document.getElementById("heroStatStates");
+  if (elStates) elStates.textContent = "All 28 States";
 }
 
 // Toast Notifications
@@ -1022,3 +1432,9 @@ window.setWizardStep = setWizardStep;
 window.saveAllMatchedSchemes = saveAllMatchedSchemes;
 window.updateSchemeKanbanStatus = updateSchemeKanbanStatus;
 window.resetFilters = resetFilters;
+window.updateCompareSlot = updateCompareSlot;
+window.renderCSCLocations = renderCSCLocations;
+window.highlightActiveSideNav = highlightActiveSideNav;
+window.initHamburgerMenu = initHamburgerMenu;
+window.initAuthNav = initAuthNav;
+

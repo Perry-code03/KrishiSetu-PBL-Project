@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register Farmer Account — KrishiSetu (कृषि सेतु)</title>
+  <meta name="description" content="Create your farmer account on KrishiSetu to discover verified agricultural schemes, save bookmarks, and receive step-by-step guidance.">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌾</text></svg>">
+</head>
+<body>
+
+  <!-- Top Information Bar -->
+  <header class="top-bar">
+    <div class="top-bar-left">
+      <span>National Agricultural Welfare Information & Application Guidance Platform</span>
+    </div>
+    <div class="top-bar-right">
+      <span>🛡️ Verified Data · Updated September 2026</span>
+      <button class="lang-toggle-btn" id="langToggleBtn" onclick="toggleLanguage()" title="Switch Language / भाषा बदलें">
+        <span>🌐 English</span>
+        <span class="lang-active-tag">EN</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Sticky Navigation Bar -->
+  <nav class="top-nav" id="topNav">
+    <div class="nav-brand">
+      <a href="index.html" style="display:flex; align-items:center; gap:12px; text-decoration:none;">
+        <div class="brand-emblem">🌾</div>
+        <div class="brand-text">
+          <h1 data-i18n="appTitle">KrishiSetu</h1>
+        </div>
+      </a>
+    </div>
+
+    <div class="nav-actions">
+      <a href="login.html" class="btn-outline">
+        <span>👤 Sign In</span>
+      </a>
+    </div>
+  </nav>
+
+  <!-- Signup Main Container -->
+  <main class="auth-page-wrapper">
+    <div class="auth-card" style="max-width: 500px;">
+      <div class="auth-logo">🌾</div>
+      <h2 class="auth-title">Farmer Registration</h2>
+      <p class="auth-subtitle">Create a free account to track government welfare applications</p>
+
+      <div class="auth-error-msg" id="signupErrorMsg"></div>
+
+      <form id="signupForm" autocomplete="on">
+        <div class="auth-input-group">
+          <label for="fullNameInput">Full Name / पूरा नाम *</label>
+          <input type="text" id="fullNameInput" placeholder="e.g. Ramesh Patel" required autocomplete="name">
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+          <div class="auth-input-group">
+            <label for="mobileInput">Mobile (10 Digits) *</label>
+            <input type="tel" id="mobileInput" placeholder="9876543210" pattern="[0-9]{10}" maxlength="10" required autocomplete="tel">
+          </div>
+          <div class="auth-input-group">
+            <label for="emailInput">Email (Optional)</label>
+            <input type="email" id="emailInput" placeholder="farmer@example.com" autocomplete="email">
+          </div>
+        </div>
+
+        <div class="auth-input-group">
+          <label for="stateSelect">Home State / गृह राज्य *</label>
+          <select id="stateSelect" required>
+            <option value="Madhya Pradesh" selected>Madhya Pradesh (मध्य प्रदेश)</option>
+            <option value="Uttar Pradesh">Uttar Pradesh (उत्तर प्रदेश)</option>
+            <option value="Maharashtra">Maharashtra (महाराष्ट्र)</option>
+            <option value="Rajasthan">Rajasthan (राजस्थान)</option>
+            <option value="Punjab">Punjab (पंजाब)</option>
+            <option value="Gujarat">Gujarat (गुजरात)</option>
+            <option value="Bihar">Bihar (बिहार)</option>
+            <option value="Other">Other State (अन्य राज्य)</option>
+          </select>
+        </div>
+
+        <div class="auth-input-group">
+          <label for="signupPasswordInput">Password / पासवर्ड *</label>
+          <input type="password" id="signupPasswordInput" placeholder="Min. 6 characters" required autocomplete="new-password">
+          <button type="button" class="password-toggle-btn" id="toggleSignupPasswordBtn" title="Show/Hide">👁️</button>
+          <div class="password-strength-bar">
+            <div class="password-strength-fill" id="strengthFill"></div>
+          </div>
+          <div style="font-size: 0.72rem; color: var(--color-ink-faint); margin-top: 4px;" id="strengthText">Strength: Weak</div>
+        </div>
+
+        <div class="auth-input-group">
+          <label for="confirmPasswordInput">Confirm Password / पासवर्ड की पुष्टि करें *</label>
+          <input type="password" id="confirmPasswordInput" placeholder="Re-enter password" required autocomplete="new-password">
+        </div>
+
+        <button type="submit" class="auth-submit-btn" id="signupSubmitBtn">
+          Create Farmer Account / खाता बनाएं →
+        </button>
+      </form>
+
+      <div class="auth-footer-link">
+        <span>Already have an account?</span> 
+        <a href="login.html">Sign In Here / लॉगिन करें</a>
+      </div>
+    </div>
+  </main>
+
+  <!-- Scripts -->
+  <script src="js/schemes-data.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+
+  <script>
+    // Password Strength Meter
+    const passInput = document.getElementById('signupPasswordInput');
+    const strengthFill = document.getElementById('strengthFill');
+    const strengthText = document.getElementById('strengthText');
+
+    if (passInput && strengthFill && strengthText) {
+      passInput.addEventListener('input', () => {
+        const val = passInput.value;
+        let score = 0;
+        if (val.length >= 6) score++;
+        if (val.length >= 8) score++;
+        if (/[A-Z]/.test(val) && /[0-9]/.test(val)) score++;
+        if (/[^A-Za-z0-9]/.test(val)) score++;
+
+        if (val.length === 0) {
+          strengthFill.style.width = '0';
+          strengthText.textContent = '';
+        } else if (score <= 1) {
+          strengthFill.style.width = '33%';
+          strengthFill.style.background = 'var(--color-danger)';
+          strengthText.textContent = 'Strength: Weak';
+          strengthText.style.color = 'var(--color-danger)';
+        } else if (score <= 2) {
+          strengthFill.style.width = '66%';
+          strengthFill.style.background = 'var(--color-warning)';
+          strengthText.textContent = 'Strength: Moderate';
+          strengthText.style.color = 'var(--color-warning)';
+        } else {
+          strengthFill.style.width = '100%';
+          strengthFill.style.background = 'var(--color-success)';
+          strengthText.textContent = 'Strength: Strong';
+          strengthText.style.color = 'var(--color-success)';
+        }
+      });
+    }
+
+    // Toggle Password Visibility
+    const toggleBtn = document.getElementById('toggleSignupPasswordBtn');
+    if (toggleBtn && passInput) {
+      toggleBtn.addEventListener('click', () => {
+        const type = passInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passInput.setAttribute('type', type);
+        toggleBtn.textContent = type === 'password' ? '👁️' : '🙈';
+      });
+    }
+
+    // Handle Form Submit
+    const signupForm = document.getElementById('signupForm');
+    const signupErrorMsg = document.getElementById('signupErrorMsg');
+    const signupSubmitBtn = document.getElementById('signupSubmitBtn');
+
+    if (signupForm) {
+      signupForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        signupErrorMsg.classList.remove('visible');
+        signupErrorMsg.textContent = '';
+
+        const fullName = document.getElementById('fullNameInput').value.trim();
+        const mobile = document.getElementById('mobileInput').value.trim();
+        const email = document.getElementById('emailInput').value.trim() || null;
+        const state = document.getElementById('stateSelect').value;
+        const password = document.getElementById('signupPasswordInput').value;
+        const confirm = document.getElementById('confirmPasswordInput').value;
+
+        if (password !== confirm) {
+          signupErrorMsg.textContent = 'Passwords do not match. Please re-enter.';
+          signupErrorMsg.classList.add('visible');
+          return;
+        }
+
+        if (password.length < 6) {
+          signupErrorMsg.textContent = 'Password must be at least 6 characters.';
+          signupErrorMsg.classList.add('visible');
+          return;
+        }
+
+        signupSubmitBtn.disabled = true;
+        signupSubmitBtn.textContent = 'Creating Account... / खाता बनाया जा रहा है...';
+
+        try {
+          const res = await KrishiApi.register({
+            fullName,
+            mobile,
+            email,
+            password,
+            state
+          });
+
+          if (res && res.success) {
+            // Auto-merge guest bookmarks if present
+            const localSaved = JSON.parse(localStorage.getItem('krishi_saved_schemes') || '[]');
+            if (localSaved.length > 0) {
+              await KrishiApi.mergeGuestSaved(localSaved).catch(() => null);
+            }
+
+            alert('Account created successfully! Welcome to KrishiSetu.');
+            window.location.href = 'index.html';
+          } else {
+            signupErrorMsg.textContent = (res && res.error && res.error.message) || 'Registration failed. Please check your details.';
+            signupErrorMsg.classList.add('visible');
+            signupSubmitBtn.disabled = false;
+            signupSubmitBtn.textContent = 'Create Farmer Account / खाता बनाएं →';
+          }
+        } catch (err) {
+          signupErrorMsg.textContent = 'Failed to connect to authentication server. Please check your backend connection.';
+          signupErrorMsg.classList.add('visible');
+          signupSubmitBtn.disabled = false;
+          signupSubmitBtn.textContent = 'Create Farmer Account / खाता बनाएं →';
+        }
+      });
+    }
+  </script>
+</body>
+</html>

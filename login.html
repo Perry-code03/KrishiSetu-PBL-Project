@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — KrishiSetu (कृषि सेतु)</title>
+  <meta name="description" content="Sign in to your KrishiSetu farmer account to access saved schemes, track milestone applications, and receive personalized recommendations.">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌾</text></svg>">
+</head>
+<body>
+
+  <!-- Top Information Bar -->
+  <header class="top-bar">
+    <div class="top-bar-left">
+      <span>National Agricultural Welfare Information & Application Guidance Platform</span>
+    </div>
+    <div class="top-bar-right">
+      <span>🛡️ Verified Data · Updated September 2026</span>
+      <button class="lang-toggle-btn" id="langToggleBtn" onclick="toggleLanguage()" title="Switch Language / भाषा बदलें">
+        <span>🌐 English</span>
+        <span class="lang-active-tag">EN</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Sticky Navigation Bar -->
+  <nav class="top-nav" id="topNav">
+    <div class="nav-brand">
+      <a href="index.html" style="display:flex; align-items:center; gap:12px; text-decoration:none;">
+        <div class="brand-emblem">🌾</div>
+        <div class="brand-text">
+          <h1 data-i18n="appTitle">KrishiSetu</h1>
+        </div>
+      </a>
+    </div>
+
+    <div class="nav-actions">
+      <a href="index.html" class="btn-outline">
+        <span>← Back to Home</span>
+      </a>
+    </div>
+  </nav>
+
+  <!-- Login Main Container -->
+  <main class="auth-page-wrapper">
+    <div class="auth-card">
+      <div class="auth-logo">🌾</div>
+      <h2 class="auth-title" id="loginHeading">Welcome Back</h2>
+      <p class="auth-subtitle" id="loginSubheading">Log in to manage your saved schemes & applications</p>
+
+      <div class="auth-error-msg" id="loginErrorMsg"></div>
+
+      <form id="loginForm" autocomplete="on">
+        <div class="auth-input-group">
+          <label for="loginInput" id="labelLoginInput">Mobile Number or Email / मोबाइल या ईमेल</label>
+          <input type="text" id="loginInput" placeholder="e.g. 9876543211 or farmer@krishisetu.in" required autocomplete="username">
+        </div>
+
+        <div class="auth-input-group">
+          <label for="passwordInput" id="labelPasswordInput">Password / पासवर्ड</label>
+          <input type="password" id="passwordInput" placeholder="Enter your password" required autocomplete="current-password">
+          <button type="button" class="password-toggle-btn" id="togglePasswordBtn" title="Show / Hide Password">👁️</button>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; font-size: 0.8125rem;">
+          <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--color-ink-muted);">
+            <input type="checkbox" id="rememberMeCheckbox">
+            <span>Remember Me / मुझे याद रखें</span>
+          </label>
+          <a href="#" id="forgotPasswordLink" style="color: var(--color-primary); font-weight: 500;">Forgot?</a>
+        </div>
+
+        <button type="submit" class="auth-submit-btn" id="loginSubmitBtn">
+          Sign In / प्रवेश करें →
+        </button>
+      </form>
+
+      <div class="auth-footer-link">
+        <span id="noAccountText">Don't have an account?</span> 
+        <a href="signup.html" id="signUpLink">Register as New Farmer / नया खाता बनाएं</a>
+      </div>
+
+      <div style="margin-top: 24px; padding: 12px; background: #FAF8F2; border-radius: var(--radius-sm); border: 1px dashed var(--color-surface-border); font-size: 0.775rem; color: var(--color-ink-muted);">
+        <strong>Demo Credentials:</strong><br>
+        Farmer: <code>farmer@krishisetu.in</code> / <code>Farmer@123</code><br>
+        Admin: <code>admin@krishisetu.in</code>
+      </div>
+    </div>
+  </main>
+
+  <!-- Scripts -->
+  <script src="js/schemes-data.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+
+  <script>
+    // Password visibility toggle
+    const togglePasswordBtn = document.getElementById('togglePasswordBtn');
+    const passwordInput = document.getElementById('passwordInput');
+    if (togglePasswordBtn && passwordInput) {
+      togglePasswordBtn.addEventListener('click', () => {
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        togglePasswordBtn.textContent = type === 'password' ? '👁️' : '🙈';
+      });
+    }
+
+    // Forgot password prompt
+    const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+    if (forgotPasswordLink) {
+      forgotPasswordLink.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const login = prompt('Enter your registered Mobile Number or Email:');
+        if (!login) return;
+        try {
+          const res = await KrishiApi.forgotPassword(login.trim());
+          if (res && res.success) {
+            alert('Password reset instructions generated. In development mode, check your server console log for the reset token.');
+          } else {
+            alert((res && res.error && res.error.message) || 'Unable to find an account with those details.');
+          }
+        } catch (err) {
+          alert('Backend server is offline or unreachable.');
+        }
+      });
+    }
+
+    // Handle Login Form
+    const loginForm = document.getElementById('loginForm');
+    const loginErrorMsg = document.getElementById('loginErrorMsg');
+    const loginSubmitBtn = document.getElementById('loginSubmitBtn');
+
+    if (loginForm) {
+      loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        loginErrorMsg.classList.remove('visible');
+        loginErrorMsg.textContent = '';
+        loginSubmitBtn.disabled = true;
+        loginSubmitBtn.textContent = 'Authenticating... / सत्यापन जारी...';
+
+        const login = document.getElementById('loginInput').value.trim();
+        const password = document.getElementById('passwordInput').value;
+        const rememberMe = document.getElementById('rememberMeCheckbox').checked;
+
+        try {
+          const res = await KrishiApi.login(login, password, rememberMe);
+
+          if (res && res.success) {
+            // Check if there are local guest bookmarks to merge
+            const localSaved = JSON.parse(localStorage.getItem('krishi_saved_schemes') || '[]');
+            if (localSaved.length > 0) {
+              await KrishiApi.mergeGuestSaved(localSaved).catch(() => null);
+            }
+
+            // Also check if there was a pending save
+            const urlParams = new URLSearchParams(window.location.search);
+            const pendingScheme = urlParams.get('scheme');
+            if (pendingScheme) {
+              await KrishiApi.saveScheme(pendingScheme).catch(() => null);
+            }
+
+            // Redirect to destination
+            const nextUrl = urlParams.get('next') || 'index.html';
+            window.location.href = decodeURIComponent(nextUrl);
+          } else {
+            loginErrorMsg.textContent = (res && res.error && res.error.message) || 'Invalid credentials. Please verify and try again.';
+            loginErrorMsg.classList.add('visible');
+            loginSubmitBtn.disabled = false;
+            loginSubmitBtn.textContent = 'Sign In / प्रवेश करें →';
+          }
+        } catch (err) {
+          loginErrorMsg.textContent = 'Failed to connect to authentication server. Please check your backend connection.';
+          loginErrorMsg.classList.add('visible');
+          loginSubmitBtn.disabled = false;
+          loginSubmitBtn.textContent = 'Sign In / प्रवेश करें →';
+        }
+      });
+    }
+  </script>
+</body>
+</html>
